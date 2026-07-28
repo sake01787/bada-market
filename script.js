@@ -14,3 +14,48 @@ window.addEventListener('load',()=>setTimeout(()=>{const K='badaMarketDataV3',F=
 window.addEventListener('load',()=>setTimeout(()=>{const K='badaMarketDataV3',unit=document.querySelector('#product-unit'),size=document.querySelector('#size-grade');if(size){size.closest('label').classList.add('hidden');document.querySelector('#size-direct-wrap').classList.add('hidden')}unit.value=unit.value==='마리'?'마리':'kg';const read=()=>JSON.parse(localStorage.getItem(K)||'{"products":[],"bookings":[]}'),write=d=>localStorage.setItem(K,JSON.stringify(d));const previousReserve=window.reserve;window.reserve=id=>{const before=read().bookings.length;previousReserve(id);setTimeout(()=>{const d=read();if(d.bookings.length>before){d.bookings[0].createdAt=Date.now();write(d)}},20)};function cancellations(){const d=read(),me=localStorage.getItem('badaMarketNickname')||'',mine=d.bookings.filter(b=>b.nickname===me),cards=[...document.querySelectorAll('#booking-list .booking-item')];cards.forEach((card,i)=>{const b=mine[i];if(!b||card.querySelector('.cancel-booking'))return;const btn=document.createElement('button');btn.className='cancel-booking';btn.textContent='예약 취소';btn.onclick=()=>{const elapsed=Date.now()-(b.createdAt||0);if(!b.createdAt||elapsed>3600000)return alert('예약 후 1시간 이내에만 취소할 수 있어요.');const all=read(),p=all.products.find(x=>x.id===b.productId);if(p)p.reserved=Math.max(0,p.reserved-b.qty);all.bookings=all.bookings.filter(x=>x!==b);write(all);location.reload()};card.append(btn)})}new MutationObserver(()=>setTimeout(cancellations,0)).observe(document.querySelector('#booking-list'),{childList:true});cancellations()},320));
 window.addEventListener('load',()=>setTimeout(()=>{function fixCancel(){const K='badaMarketDataV3',d=JSON.parse(localStorage.getItem(K)||'{"products":[],"bookings":[]}'),me=localStorage.getItem('badaMarketNickname')||'',mine=d.bookings.filter(b=>b.nickname===me),buttons=[...document.querySelectorAll('#booking-list .cancel-booking')];buttons.forEach((btn,i)=>{const b=mine[i];if(!b)return;btn.onclick=()=>{const all=JSON.parse(localStorage.getItem(K)||'{"products":[],"bookings":[]}'),booking=all.bookings.find(x=>x.productId===b.productId&&x.nickname===b.nickname&&x.qty===b.qty),p=all.products.find(x=>x.id===b.productId);if(!booking||!p)return;const deadline=new Date(p.arrival).getTime()-60*60*1000;if(Date.now()>deadline)return alert('예상 입항시간 1시간 전까지만 예약을 취소할 수 있어요.');p.reserved=Math.max(0,p.reserved-booking.qty);all.bookings.splice(all.bookings.indexOf(booking),1);localStorage.setItem(K,JSON.stringify(all));location.reload()}})}new MutationObserver(()=>setTimeout(fixCancel,0)).observe(document.querySelector('#booking-list'),{childList:true});fixCancel()},420));
 window.addEventListener('load',()=>setTimeout(()=>{const K='badaMarketDataV3';document.querySelectorAll('#booking-list .cancel-booking').forEach(btn=>{btn.onclick=()=>{const d=JSON.parse(localStorage.getItem(K)||'{"products":[],"bookings":[]}'),me=localStorage.getItem('badaMarketNickname')||'',rows=[...document.querySelectorAll('#booking-list .booking-item')],row=btn.closest('.booking-item'),i=rows.indexOf(row),b=d.bookings.filter(x=>x.nickname===me)[i],p=d.products.find(x=>x.id===b?.productId);if(!b||!p)return;if(p.status==='입항 완료')return alert('입항이 완료된 상품은 취소할 수 없어요.');p.reserved=Math.max(0,p.reserved-b.qty);d.bookings.splice(d.bookings.indexOf(b),1);localStorage.setItem(K,JSON.stringify(d));location.reload()}})},520));
+
+// 시민·관광객 상품 통합 검색
+window.addEventListener('load',()=>{
+  const content=document.querySelector('.citizen-content');
+  const heading=content?.querySelector(':scope > .section-heading');
+  const list=document.querySelector('#citizen-list');
+  if(!content||!heading||!list||document.querySelector('#product-search'))return;
+
+  const panel=document.createElement('section');
+  panel.className='panel search-panel';
+  panel.setAttribute('role','search');
+  panel.innerHTML='<label for="product-search">수산물 검색</label><div class="search-row"><input id="product-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="수산물명, 어선명, 픽업 장소 검색"><button id="product-search-clear" class="search-clear" type="button">지우기</button></div><small class="search-help">일반·못난이, 입항 상태, 판매 단위로도 검색할 수 있어요.</small>';
+  heading.before(panel);
+
+  const input=panel.querySelector('#product-search');
+  const clear=panel.querySelector('#product-search-clear');
+  const empty=document.createElement('p');
+  empty.className='empty search-empty hidden';
+  empty.textContent='검색 조건에 맞는 수산물이 없습니다.';
+  list.after(empty);
+
+  const normalize=value=>String(value??'').trim().toLocaleLowerCase('ko-KR').replace(/\s+/g,'');
+  const applySearch=()=>{
+    const query=normalize(input.value);
+    const data=JSON.parse(localStorage.getItem('badaMarketDataV3')||'{"products":[]}');
+    const cards=[...list.querySelectorAll('.product-card')];
+    let visible=0;
+    cards.forEach((card,index)=>{
+      const product=data.products[index];
+      const text=normalize([product?.name,product?.boat,product?.pickup,product?.grade,product?.status,product?.unit].join(' '));
+      const match=!query||text.includes(query);
+      card.classList.toggle('search-hidden',!match);
+      if(match&&product&&product.quantity-product.reserved>0)visible++;
+    });
+    document.querySelector('#product-count').textContent=`${visible}개 품목`;
+    empty.classList.toggle('hidden',visible!==0);
+    clear.classList.toggle('hidden',!input.value);
+  };
+
+  input.addEventListener('input',applySearch);
+  input.addEventListener('search',applySearch);
+  clear.addEventListener('click',()=>{input.value='';applySearch();input.focus()});
+  new MutationObserver(()=>requestAnimationFrame(applySearch)).observe(list,{childList:true});
+  applySearch();
+});
