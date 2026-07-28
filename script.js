@@ -114,6 +114,34 @@ function productPhoto(product, className) {
     : '<div class="fish-dot">🐟</div>';
 }
 
+function detailPhoto(product) {
+  return product.photoId
+    ? `<img class="detail-photo" data-photo-id="${escapeHtml(product.photoId)}" alt="${escapeHtml(product.name)} 사진">`
+    : '<div class="detail-photo-placeholder">🐟</div>';
+}
+
+window.openProductDetails = id => {
+  const product = state.products.find(item => item.id === id);
+  if (!product) return;
+  $('#detail-photo').innerHTML = detailPhoto(product);
+  $('#detail-title').textContent = product.name;
+  $('#detail-description').textContent = product.description || '등록된 상품 설명이 없어요.';
+  $('#detail-meta').innerHTML = `
+    <div><dt>판매자 · 어선</dt><dd>${escapeHtml(product.owner || '판매자')} · ${escapeHtml(product.boat)}</dd></div>
+    <div><dt>가격</dt><dd>${Number(product.price).toLocaleString('ko-KR')}원 / ${escapeHtml(product.unit)}</dd></div>
+    <div><dt>예상 입항</dt><dd>${formatTime(product.arrival)}</dd></div>
+    <div><dt>픽업 장소</dt><dd>${escapeHtml(product.pickup)}</dd></div>
+  `;
+  $('#product-detail-modal').classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  hydratePhotos();
+};
+
+function closeProductDetails() {
+  $('#product-detail-modal').classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
 function renderFisherList() {
   const mine = state.products.filter(product => product.ownerId === currentUser?.uid);
   $('#fisher-list').innerHTML = mine.map(product => `
@@ -231,7 +259,7 @@ function renderCitizenList() {
     const isMine = product.ownerId === currentUser?.uid;
     const liked = state.favorites?.includes(product.id);
     return `
-      <article class="product-card">
+      <article class="product-card" data-product-id="${product.id}">
         <button type="button" class="favorite-btn" onclick="toggleFavorite('${product.id}')">${liked ? '♥ 관심 상품' : '♡ 관심 상품'}</button>
         ${productPhoto(product, 'product-photo')}
         <span class="boat">⚓ ${escapeHtml(product.boat)} · ${formatTime(product.arrival)}</span>
@@ -292,7 +320,7 @@ function renderFavorites() {
   panel.innerHTML = `
     <div class="section-heading"><div><span class="eyebrow">마이페이지</span><h3>관심 상품</h3></div></div>
     ${favorites.map(product => `
-      <div class="booking-item">
+      <div class="booking-item favorite-item" data-product-id="${product.id}">
         ${productPhoto(product, 'booking-photo')}
         <div class="item-main"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.boat)} · ${Number(product.price).toLocaleString('ko-KR')}원/${escapeHtml(product.unit)}</small></div>
       </div>
@@ -343,6 +371,7 @@ window.editProduct = id => {
   $('#product-unit').value = product.unit;
   $('#product-price').value = product.price;
   $('#product-qty').value = product.quantity;
+  $('#product-description').value = product.description || '';
   $('#pickup-location').value = product.pickup;
   $('#arrival-time').value = product.arrival;
   $('#arrival-status').value = product.status;
@@ -448,6 +477,17 @@ $('#product-photo').addEventListener('change', event => {
   $('#photo-preview').classList.remove('hidden');
 });
 
+document.addEventListener('click', event => {
+  if (event.target.closest('[data-close-detail]')) return closeProductDetails();
+  const item = event.target.closest('[data-product-id]');
+  if (!item || event.target.closest('button, input, form, details, summary, label')) return;
+  window.openProductDetails(item.dataset.productId);
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeProductDetails();
+});
+
 $('#catch-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!currentUser) return requireLogin('fisher');
@@ -459,6 +499,7 @@ $('#catch-form').addEventListener('submit', async event => {
     unit: $('#product-unit').value,
     price: Number($('#product-price').value),
     quantity: Number($('#product-qty').value),
+    description: $('#product-description').value.trim(),
     pickup: $('#pickup-location').value.trim(),
     arrival: $('#arrival-time').value,
     status: $('#arrival-status').value
