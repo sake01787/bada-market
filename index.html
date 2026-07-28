@@ -100,9 +100,6 @@
 </div>
 <label>수량 (<span id="quantity-unit">kg</span>)<input id="product-qty" required type="number" min="1">
 </label>
-<label>상품 설명 <span class="optional">선택</span>
-<textarea id="product-description" maxlength="500" placeholder="예: 오늘 새벽 조업한 활광어예요. 손질 여부, 보관 방법, 추천 조리법 등을 적어 주세요."></textarea>
-</label>
 <label>수산물 사진 <span class="optional">선택</span>
 <input id="product-photo" type="file" accept="image/*" capture="environment">
 <small class="hint">휴대폰에서는 카메라 또는 사진첩을 바로 사용할 수 있어요. 큰 사진도 등록할 수 있습니다.</small>
@@ -188,20 +185,9 @@
 </main>
 <div id="toast" class="toast">
 </div>
-<div id="product-detail-modal" class="detail-modal hidden" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-<div class="detail-backdrop" data-close-detail></div>
-<section class="detail-card">
-<button class="detail-close" type="button" data-close-detail aria-label="상품 정보 닫기">×</button>
-<div id="detail-photo"></div>
-<p class="eyebrow">입항 수산물 정보</p>
-<h3 id="detail-title"></h3>
-<p id="detail-description" class="detail-description"></p>
-<dl id="detail-meta" class="detail-meta"></dl>
-</section>
-</div>
-<script src="script.js?v=20260728-detail1">
+<script src="script.js?v=20260728-messages2">
 </script>
-<script type="module" src="firebase.js?v=20260728-detail1">
+<script type="module" src="firebase.js?v=20260728-messages1">
 </script>
 </body>
 </html>
