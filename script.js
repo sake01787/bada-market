@@ -46,7 +46,7 @@ window.addEventListener('load',()=>{
       const text=normalize([product?.name,product?.boat,product?.pickup,product?.grade,product?.status,product?.unit].join(' '));
       const match=!query||text.includes(query);
       card.classList.toggle('search-hidden',!match);
-      if(match&&product&&product.quantity-product.reserved>0)visible++;
+      if(match&&!card.classList.contains('soldout-card'))visible++;
     });
     document.querySelector('#product-count').textContent=`${visible}개 품목`;
     empty.classList.toggle('hidden',visible!==0);
