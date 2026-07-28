@@ -2,9 +2,13 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/fireba
 import {
   getAuth,
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signInWithPopup,
-  signOut
+  signOut,
+  updateProfile
 } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js';
 import {
   collection,
@@ -122,16 +126,74 @@ async function sync() {
   }
 }
 
-async function login(role) {
+function authMessage(error) {
+  const messages = {
+    'auth/email-already-in-use': '이미 가입된 이메일이에요. 로그인해 주세요.',
+    'auth/invalid-email': '이메일 형식을 확인해 주세요.',
+    'auth/invalid-credential': '이메일 또는 비밀번호가 올바르지 않아요.',
+    'auth/weak-password': '비밀번호는 6자 이상 입력해 주세요.',
+    'auth/too-many-requests': '로그인 시도가 너무 많아요. 잠시 후 다시 시도해 주세요.',
+    'auth/network-request-failed': '인터넷 연결을 확인해 주세요.',
+    'auth/popup-closed-by-user': 'Google 로그인 창이 닫혔어요.'
+  };
+  return messages[error.code] || '로그인 처리 중 문제가 생겼어요. 다시 시도해 주세요.';
+}
+
+async function finishLogin(role) {
+  activeUser = auth.currentUser;
+  await sync();
+  sessionStorage.removeItem('badaPendingRole');
+  window.show?.(role);
+}
+
+async function loginWithGoogle(role) {
   try {
     sessionStorage.setItem('badaPendingRole', role);
     if (!auth.currentUser) await signInWithPopup(auth, new GoogleAuthProvider());
-    activeUser = auth.currentUser;
-    await sync();
-    window.show?.(role);
+    await finishLogin(role);
   } catch (error) {
     console.error(error);
-    if (error.code !== 'auth/popup-closed-by-user') notice('Google 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.');
+    notice(authMessage(error));
+  }
+}
+
+async function loginWithEmail(email, password, role) {
+  try {
+    sessionStorage.setItem('badaPendingRole', role);
+    await signInWithEmailAndPassword(auth, email, password);
+    await finishLogin(role);
+  } catch (error) {
+    console.error(error);
+    notice(authMessage(error));
+  }
+}
+
+async function registerWithEmail(name, email, password, role) {
+  try {
+    sessionStorage.setItem('badaPendingRole', role);
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(credential.user, { displayName: name });
+    activeUser = credential.user;
+    await setDoc(doc(db, 'users', activeUser.uid), {
+      displayName: name,
+      email,
+      createdAt: Date.now()
+    });
+    await finishLogin(role);
+    notice(`${name}님, 회원가입이 완료됐어요.`);
+  } catch (error) {
+    console.error(error);
+    notice(authMessage(error));
+  }
+}
+
+async function resetPassword(email) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    notice('비밀번호 재설정 메일을 보냈어요.');
+  } catch (error) {
+    console.error(error);
+    notice(authMessage(error));
   }
 }
 
@@ -144,7 +206,7 @@ async function logout() {
 }
 
 async function saveProduct(product, photoFile, isEditing) {
-  if (!activeUser) return login('fisher');
+  if (!activeUser) return loginWithGoogle('fisher');
   try {
     const oldProduct = isEditing
       ? (await runTransaction(db, async transaction => {
@@ -225,7 +287,7 @@ async function deleteProduct(id) {
 }
 
 async function reserve(productId, quantity) {
-  if (!activeUser) return login('citizen');
+  if (!activeUser) return loginWithGoogle('citizen');
   const productRef = doc(db, 'products', productId);
   const bookingRef = doc(collection(db, 'bookings'));
   try {
@@ -288,7 +350,7 @@ async function cancelBooking(bookingId) {
 }
 
 async function toggleFavorite(productId) {
-  if (!activeUser) return login('citizen');
+  if (!activeUser) return loginWithGoogle('citizen');
   const favoriteRef = doc(db, 'favorites', activeUser.uid, 'items', productId);
   const current = JSON.parse(localStorage.getItem('badaFavorites') || '[]');
   if (current.includes(productId)) await deleteDoc(favoriteRef);
@@ -314,7 +376,10 @@ async function addComment(productId, text) {
 }
 
 window.badaApi = {
-  login,
+  loginWithGoogle,
+  loginWithEmail,
+  registerWithEmail,
+  resetPassword,
   logout,
   saveProduct,
   updateProduct,

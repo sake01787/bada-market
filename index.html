@@ -34,14 +34,30 @@
 </section>
 <section id="login-screen" class="login-screen hidden">
 <div class="login-card">
-<p class="eyebrow">Google 로그인</p>
+<p class="eyebrow">바다장터 계정</p>
 <h1 id="login-title">바다장터 시작하기</h1>
-<p>Google 계정으로 안전하게 로그인해 주세요.</p>
-<label>닉네임<input id="login-nickname" maxlength="16" placeholder="예: 바다좋아">
-</label>
-<button id="login-submit" class="primary-btn">입장하기</button>
+<p>로그인하면 내 상품과 예약 내역을 어디서든 확인할 수 있어요.</p>
+<div class="auth-tabs" role="tablist">
+<button id="login-tab" class="active" type="button">로그인</button>
+<button id="signup-tab" type="button">회원가입</button>
+</div>
+<form id="email-login-form" class="auth-form">
+<label>이메일<input id="login-email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
+<label>비밀번호<input id="login-password" type="password" autocomplete="current-password" minlength="6" required placeholder="6자 이상"></label>
+<button class="primary-btn" type="submit">이메일로 로그인</button>
+<button id="reset-password" class="text-link compact" type="button">비밀번호를 잊으셨나요?</button>
+</form>
+<form id="email-signup-form" class="auth-form hidden">
+<label>닉네임<input id="signup-name" maxlength="16" required placeholder="예: 바다좋아"></label>
+<label>이메일<input id="signup-email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
+<label>비밀번호<input id="signup-password" type="password" autocomplete="new-password" minlength="6" required placeholder="6자 이상"></label>
+<label>비밀번호 확인<input id="signup-password-confirm" type="password" autocomplete="new-password" minlength="6" required placeholder="비밀번호 다시 입력"></label>
+<button class="primary-btn" type="submit">회원가입하고 시작하기</button>
+</form>
+<div class="auth-divider"><span>또는</span></div>
+<button id="google-login" class="google-btn" type="button">G&nbsp;&nbsp; Google 계정으로 계속하기</button>
 <button id="login-cancel" class="text-link">처음으로 돌아가기</button>
-<small>로그인한 계정의 예약과 관심 상품만 표시됩니다.</small>
+<small>로그인한 계정의 상품·예약·관심 목록만 표시됩니다.</small>
 </div>
 </section>
 <section id="fisher-screen" class="screen hidden">
@@ -142,7 +158,7 @@
 </strong>
 </div>
 <button id="change-user" class="text-btn">계정 전환</button>
-<small>현재 로그인한 닉네임의 예약 내역만 표시됩니다.</small>
+<small>현재 로그인한 계정의 예약 내역만 표시됩니다.</small>
 </section>
 <div class="section-heading">
 <div>
@@ -169,9 +185,9 @@
 </main>
 <div id="toast" class="toast">
 </div>
-<script src="script.js?v=20260728-firebase3">
+<script src="script.js?v=20260728-auth1">
 </script>
-<script type="module" src="firebase.js?v=20260728-firebase2">
+<script type="module" src="firebase.js?v=20260728-auth1">
 </script>
 </body>
 </html>

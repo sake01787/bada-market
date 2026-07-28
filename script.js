@@ -8,6 +8,7 @@ let currentRole = '';
 let editingId = null;
 let previewUrl = '';
 let searchText = '';
+let authRole = 'citizen';
 
 const $ = selector => document.querySelector(selector);
 const remaining = product => Math.max(0, Number(product.quantity) - Number(product.reserved || 0));
@@ -83,8 +84,13 @@ function goHome() {
 }
 
 function requireLogin(role) {
-  if (window.badaApi?.login) return window.badaApi.login(role);
-  toast('로그인 기능을 준비하고 있어요. 잠시 후 다시 눌러 주세요.');
+  if (currentUser) return show(role);
+  authRole = role;
+  sessionStorage.setItem('badaPendingRole', role);
+  $('#role-screen').classList.add('hidden');
+  $('#login-screen').classList.remove('hidden');
+  $('#login-title').textContent = role === 'fisher' ? '어민으로 시작하기' : '시민·관광객으로 시작하기';
+  $('#login-email').focus();
 }
 
 function resetForm() {
@@ -325,6 +331,47 @@ document.querySelectorAll('[data-logout]').forEach(button => {
 $('#change-user').addEventListener('click', () => window.badaApi?.logout());
 $('#clear-bookings')?.remove();
 $('#cancel-edit').addEventListener('click', resetForm);
+
+function selectAuthMode(mode) {
+  const signup = mode === 'signup';
+  $('#login-tab').classList.toggle('active', !signup);
+  $('#signup-tab').classList.toggle('active', signup);
+  $('#email-login-form').classList.toggle('hidden', signup);
+  $('#email-signup-form').classList.toggle('hidden', !signup);
+  (signup ? $('#signup-name') : $('#login-email')).focus();
+}
+
+$('#login-tab').addEventListener('click', () => selectAuthMode('login'));
+$('#signup-tab').addEventListener('click', () => selectAuthMode('signup'));
+$('#login-cancel').addEventListener('click', goHome);
+$('#google-login').addEventListener('click', () => window.badaApi?.loginWithGoogle(authRole));
+
+$('#email-login-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  await window.badaApi?.loginWithEmail(
+    $('#login-email').value.trim(),
+    $('#login-password').value,
+    authRole
+  );
+});
+
+$('#email-signup-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const password = $('#signup-password').value;
+  if (password !== $('#signup-password-confirm').value) return toast('비밀번호 확인이 일치하지 않아요.');
+  await window.badaApi?.registerWithEmail(
+    $('#signup-name').value.trim(),
+    $('#signup-email').value.trim(),
+    password,
+    authRole
+  );
+});
+
+$('#reset-password').addEventListener('click', async () => {
+  const email = $('#login-email').value.trim();
+  if (!email) return toast('비밀번호를 재설정할 이메일을 입력해 주세요.');
+  await window.badaApi?.resetPassword(email);
+});
 
 $('#product-unit').addEventListener('change', event => {
   $('#price-unit').textContent = event.target.value;
