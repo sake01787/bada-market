@@ -167,14 +167,27 @@ function renderMessageThread(booking, compact = false) {
 function renderSellerMessages(product) {
   const related = state.messages.filter(message => message.productId === product.id);
   if (!related.length) return '';
+  const threads = [...related.reduce((groups, message) => {
+    if (!groups.has(message.bookingId)) groups.set(message.bookingId, []);
+    groups.get(message.bookingId).push(message);
+    return groups;
+  }, new Map()).entries()];
   return `
     <details class="private-messages seller-messages">
       <summary>예약자 문의 ${related.length}</summary>
-      <div class="message-list">
-        ${related.sort((a, b) => Number(a.createdAt) - Number(b.createdAt)).map(message => `
-          <p class="${message.senderId === currentUser?.uid ? 'mine' : ''}"><strong>${escapeHtml(message.senderName)}</strong> ${escapeHtml(message.text)}</p>
-        `).join('')}
-      </div>
+      ${threads.map(([bookingId, messages]) => `
+        <div class="seller-thread">
+          <div class="message-list">
+            ${messages.sort((a, b) => Number(a.createdAt) - Number(b.createdAt)).map(message => `
+              <p class="${message.senderId === currentUser?.uid ? 'mine' : ''}"><strong>${escapeHtml(message.senderName)}</strong> ${escapeHtml(message.text)}</p>
+            `).join('')}
+          </div>
+          <form class="message-form" onsubmit="sendSellerMessage(event, '${bookingId}')">
+            <input name="message" maxlength="300" required placeholder="예약자에게 답장하기">
+            <button type="submit">답장</button>
+          </form>
+        </div>
+      `).join('')}
     </details>
   `;
 }
