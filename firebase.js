@@ -95,17 +95,21 @@ async function sync() {
   if (!activeUser || syncing) return;
   syncing = true;
   try {
-    const [productsSnapshot, bookingsSnapshot, favoritesSnapshot, commentsSnapshot, imagesSnapshot] = await Promise.all([
+    const [productsSnapshot, bookingsSnapshot, favoritesSnapshot, commentsSnapshot, imagesSnapshot, buyerMessagesSnapshot, sellerMessagesSnapshot] = await Promise.all([
       getDocs(collection(db, 'products')),
       getDocs(query(collection(db, 'bookings'), where('buyerId', '==', activeUser.uid))),
       getDocs(collection(db, 'favorites', activeUser.uid, 'items')),
       getDocs(collection(db, 'comments')),
-      getDocs(collection(db, 'images'))
+      getDocs(collection(db, 'images')),
+      getDocs(query(collection(db, 'messages'), where('buyerId', '==', activeUser.uid))),
+      getDocs(query(collection(db, 'messages'), where('sellerId', '==', activeUser.uid)))
     ]);
 
     const products = productsSnapshot.docs.map(snapshot => ({ id: snapshot.id, ...snapshot.data() }));
     const bookings = bookingsSnapshot.docs.map(snapshot => ({ firebaseId: snapshot.id, ...snapshot.data() }));
     const comments = commentsSnapshot.docs.map(snapshot => ({ firebaseId: snapshot.id, ...snapshot.data() }));
+    const messages = [...buyerMessagesSnapshot.docs, ...sellerMessagesSnapshot.docs]
+      .reduce((unique, snapshot) => unique.has(snapshot.id) ? unique : unique.set(snapshot.id, { firebaseId: snapshot.id, ...snapshot.data() }), new Map());
     const favorites = favoritesSnapshot.docs.map(snapshot => snapshot.id);
     const images = new Map(imagesSnapshot.docs.map(snapshot => [snapshot.id, snapshot.data()]));
 
@@ -116,7 +120,7 @@ async function sync() {
       await putLocalPhoto(product.photoId, dataUrlToBlob(image.dataUrl));
     }));
 
-    window.badaApplyData({ products, bookings, comments, favorites }, {
+    window.badaApplyData({ products, bookings, comments, messages: [...messages.values()], favorites }, {
       uid: activeUser.uid,
       displayName: displayName(activeUser),
       email: activeUser.email
@@ -375,6 +379,31 @@ async function addComment(productId, text) {
   notice('댓글을 등록했어요.');
 }
 
+async function sendMessage(bookingId, text) {
+  if (!text || !activeUser) return;
+  try {
+    const bookingSnapshot = await runTransaction(db, transaction => transaction.get(doc(db, 'bookings', bookingId)));
+    if (!bookingSnapshot.exists()) throw new Error('예약 정보를 찾을 수 없어요.');
+    const booking = bookingSnapshot.data();
+    if (booking.buyerId !== activeUser.uid && booking.sellerId !== activeUser.uid) throw new Error('이 예약의 판매자·구매자만 메시지를 보낼 수 있어요.');
+    await setDoc(doc(collection(db, 'messages')), {
+      bookingId,
+      productId: booking.productId,
+      buyerId: booking.buyerId,
+      sellerId: booking.sellerId,
+      senderId: activeUser.uid,
+      senderName: displayName(activeUser),
+      text,
+      createdAt: Date.now()
+    });
+    await sync();
+    notice('판매자에게 메시지를 보냈어요.');
+  } catch (error) {
+    console.error(error);
+    notice(error.message || '메시지를 보내지 못했어요.');
+  }
+}
+
 window.badaApi = {
   loginWithGoogle,
   loginWithEmail,
@@ -387,7 +416,8 @@ window.badaApi = {
   reserve,
   cancelBooking,
   toggleFavorite,
-  addComment
+  addComment,
+  sendMessage
 };
 
 onAuthStateChanged(auth, async user => {

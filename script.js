@@ -2,7 +2,7 @@ const DATA_KEY = 'badaMarketDataV3';
 const FAVORITES_KEY = 'badaFavorites';
 const PHOTO_DB = 'badaMarketPhotos';
 
-let state = { products: [], bookings: [], comments: [] };
+let state = { products: [], bookings: [], comments: [], messages: [] };
 let currentUser = null;
 let currentRole = '';
 let editingId = null;
@@ -131,6 +131,7 @@ function renderFisherList() {
           <button type="button" class="delete" onclick="deleteProduct('${product.id}')">삭제</button>
           <button type="button" class="stop-btn" onclick="toggleSale('${product.id}')">${product.saleStopped ? '판매 재개' : '판매 중단'}</button>
         </div>
+        ${renderSellerMessages(product)}
       </div>
       <select class="status-select" onchange="changeStatus('${product.id}', this.value)">
         ${['출항 준비', '조업 중', '입항 예정', '입항 완료'].map(status =>
@@ -139,6 +140,43 @@ function renderFisherList() {
       </select>
     </article>
   `).join('') || '<p class="empty">아직 등록한 수산물이 없습니다.</p>';
+}
+
+function messagesForBooking(bookingId) {
+  return state.messages
+    .filter(message => message.bookingId === bookingId)
+    .sort((a, b) => Number(a.createdAt) - Number(b.createdAt));
+}
+
+function renderMessageThread(booking, compact = false) {
+  const messages = messagesForBooking(booking.firebaseId);
+  return `
+    <details class="private-messages" ${compact ? '' : 'open'}>
+      <summary>판매자와의 문의 ${messages.length ? `(${messages.length})` : ''}</summary>
+      <div class="message-list">
+        ${messages.map(message => `<p class="${message.senderId === currentUser?.uid ? 'mine' : ''}"><strong>${escapeHtml(message.senderName)}</strong> ${escapeHtml(message.text)}</p>`).join('') || '<p class="comment-empty">아직 주고받은 메시지가 없어요.</p>'}
+      </div>
+      <form class="message-form" onsubmit="sendSellerMessage(event, '${booking.firebaseId}')">
+        <input name="message" maxlength="300" required placeholder="판매자에게 문의할 내용을 적어 주세요">
+        <button type="submit">보내기</button>
+      </form>
+    </details>
+  `;
+}
+
+function renderSellerMessages(product) {
+  const related = state.messages.filter(message => message.productId === product.id);
+  if (!related.length) return '';
+  return `
+    <details class="private-messages seller-messages">
+      <summary>예약자 문의 ${related.length}</summary>
+      <div class="message-list">
+        ${related.sort((a, b) => Number(a.createdAt) - Number(b.createdAt)).map(message => `
+          <p class="${message.senderId === currentUser?.uid ? 'mine' : ''}"><strong>${escapeHtml(message.senderName)}</strong> ${escapeHtml(message.text)}</p>
+        `).join('')}
+      </div>
+    </details>
+  `;
 }
 
 function commentsFor(productId) {
@@ -211,6 +249,7 @@ function renderBookings() {
     const product = state.products.find(item => item.id === booking.productId);
     const status = product?.status || booking.status || '판매 정보 없음';
     const pickup = product?.pickup || booking.pickup;
+    const saleStopped = Boolean(product?.saleStopped);
     return `
       <article class="booking-item">
         ${productPhoto(product || booking, 'booking-photo')}
@@ -219,6 +258,8 @@ function renderBookings() {
           <small>${escapeHtml(booking.boat)} · ${escapeHtml(status)}</small>
           <small>📍 픽업 장소: ${escapeHtml(pickup)}</small>
           <small>${canCancel(booking) ? '예상 입항 1시간 전까지 취소 가능' : '예약 취소 가능 시간이 지났습니다.'}</small>
+          ${saleStopped ? '<p class="sale-warning">⚠️ 예약한 물품이 판매중단 되었어요.<br>판매자에게 메시지로 물어보세요.</p>' : ''}
+          ${saleStopped ? renderMessageThread(booking) : ''}
         </div>
         <button type="button" class="cancel-booking" onclick="cancelBooking('${booking.firebaseId}')" ${canCancel(booking) ? '' : 'disabled'}>예약 취소</button>
       </article>
@@ -263,6 +304,7 @@ window.badaApplyData = (data, user) => {
     products: data.products || [],
     bookings: data.bookings || [],
     comments: data.comments || [],
+    messages: data.messages || [],
     favorites: data.favorites || []
   };
   currentUser = user;
@@ -272,7 +314,7 @@ window.badaApplyData = (data, user) => {
 };
 
 window.badaSignedOut = () => {
-  state = { products: [], bookings: [], comments: [], favorites: [] };
+  state = { products: [], bookings: [], comments: [], messages: [], favorites: [] };
   currentUser = null;
   goHome();
   render();
@@ -315,6 +357,12 @@ window.submitComment = (event, productId) => {
   event.preventDefault();
   const input = event.currentTarget.elements.comment;
   window.badaApi?.addComment(productId, input.value.trim());
+  input.value = '';
+};
+window.sendSellerMessage = (event, bookingId) => {
+  event.preventDefault();
+  const input = event.currentTarget.elements.message;
+  window.badaApi?.sendMessage(bookingId, input.value.trim());
   input.value = '';
 };
 
