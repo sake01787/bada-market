@@ -98,7 +98,8 @@ function resetForm() {
   $('#quantity-unit').textContent = 'kg';
   const arrival = new Date();
   arrival.setHours(arrival.getHours() + 3);
-  $('#arrival-time').value = arrival.toISOString().slice(0, 16);
+  const localArrival = new Date(arrival.getTime() - arrival.getTimezoneOffset() * 60_000);
+  $('#arrival-time').value = localArrival.toISOString().slice(0, 16);
 }
 
 function productPhoto(product, className) {
