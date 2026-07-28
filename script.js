@@ -38,12 +38,10 @@ window.addEventListener('load',()=>{
   const normalize=value=>String(value??'').trim().toLocaleLowerCase('ko-KR').replace(/\s+/g,'');
   const applySearch=()=>{
     const query=normalize(input.value);
-    const data=JSON.parse(localStorage.getItem('badaMarketDataV3')||'{"products":[]}');
     const cards=[...list.querySelectorAll('.product-card')];
     let visible=0;
-    cards.forEach((card,index)=>{
-      const product=data.products[index];
-      const text=normalize([product?.name,product?.boat,product?.pickup,product?.grade,product?.status,product?.unit].join(' '));
+    cards.forEach(card=>{
+      const text=normalize(card.textContent);
       const match=!query||text.includes(query);
       card.classList.toggle('search-hidden',!match);
       if(match&&!card.classList.contains('soldout-card'))visible++;
