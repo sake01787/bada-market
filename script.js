@@ -248,6 +248,7 @@ function renderCitizenList() {
         ${productPhoto(product, 'product-photo')}
         <span class="boat">⚓ ${escapeHtml(product.boat)} · ${formatTime(product.arrival)}</span>
         <span class="arrival-status ${statusClass}"><i></i>${escapeHtml(product.status || '입항 상태 확인 중')}</span>
+        <p class="arrival-time">⏱ 예상 입항: <b>${formatTime(product.arrival)}</b></p>
         <h4>${escapeHtml(product.name)}</h4>
         <span class="tag ${product.grade === '못난이' ? 'ugly' : ''}">${escapeHtml(product.grade)} 수산물</span>
         ${isMine ? '<p class="owner-badge">내가 등록한 상품</p>' : ''}
