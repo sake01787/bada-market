@@ -260,7 +260,12 @@ function renderCitizenList() {
         <h4>${escapeHtml(product.name)}</h4>
         <span class="tag ${product.grade === '못난이' ? 'ugly' : ''}">${escapeHtml(product.grade)} 수산물</span>
         ${isMine ? '<p class="owner-badge">내가 등록한 상품</p>' : ''}
-        ${isAdmin() ? `<button class="admin-hide-product" type="button" onclick="moderateHideProduct('${product.id}')">관리자 · 상품 숨김</button>` : ''}
+        ${isAdmin() ? `
+          <div class="admin-product-actions">
+            <button type="button" onclick="adminEditProduct('${product.id}')">관리자 수정</button>
+            <button class="admin-delete-product" type="button" onclick="moderateDeleteProduct('${product.id}')">관리자 삭제</button>
+          </div>
+        ` : ''}
         <p class="price">${Number(product.price).toLocaleString('ko-KR')}원 <small>/ ${escapeHtml(product.unit)}</small></p>
         <p class="stock">남은 수량 <b>${remaining(product)}${escapeHtml(product.unit)}</b></p>
         <p class="pickup">📍 픽업: ${escapeHtml(product.pickup)}</p>
@@ -450,7 +455,7 @@ window.badaSignedOut = () => {
 
 window.editProduct = id => {
   const product = state.products.find(item => item.id === id);
-  if (!product || product.ownerId !== currentUser?.uid) return toast('내 상품만 수정할 수 있어요.');
+  if (!product || (product.ownerId !== currentUser?.uid && !isAdmin())) return toast('내 상품 또는 관리자만 수정할 수 있어요.');
   editingId = id;
   $('#boat-name').value = product.boat;
   $('#product-name').value = product.name;
@@ -471,7 +476,11 @@ window.editProduct = id => {
 
 window.deleteProduct = id => window.badaApi?.deleteProduct(id);
 window.moderateDeleteComment = id => window.badaApi?.deleteCommentAsAdmin(id);
-window.moderateHideProduct = id => window.badaApi?.hideProductAsAdmin(id);
+window.moderateDeleteProduct = id => window.badaApi?.deleteProductAsAdmin(id);
+window.adminEditProduct = id => {
+  show('fisher');
+  window.editProduct(id);
+};
 window.changeStatus = (id, status) => window.badaApi?.updateProduct(id, { status });
 window.toggleSale = id => {
   const product = state.products.find(item => item.id === id);

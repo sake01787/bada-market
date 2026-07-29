@@ -286,7 +286,7 @@ async function updateProduct(id, changes) {
   try {
     await runTransaction(db, async transaction => {
       const snapshot = await transaction.get(productRef);
-      if (!snapshot.exists() || snapshot.data().ownerId !== activeUser?.uid) throw new Error('내 상품만 변경할 수 있어요.');
+      if (!snapshot.exists() || (snapshot.data().ownerId !== activeUser?.uid && activeUser?.uid !== ADMIN_UID)) throw new Error('내 상품 또는 관리자만 변경할 수 있어요.');
       transaction.update(productRef, { ...changes, updatedAt: Date.now() });
     });
     await sync();
@@ -301,13 +301,13 @@ async function deleteProduct(id) {
   const productRef = doc(db, 'products', id);
   try {
     const initialSnapshot = await runTransaction(db, transaction => transaction.get(productRef));
-    if (!initialSnapshot.exists() || initialSnapshot.data().ownerId !== activeUser?.uid) throw new Error('내 상품만 삭제할 수 있어요.');
+    if (!initialSnapshot.exists() || (initialSnapshot.data().ownerId !== activeUser?.uid && activeUser?.uid !== ADMIN_UID)) throw new Error('내 상품 또는 관리자만 삭제할 수 있어요.');
     if (Number(initialSnapshot.data().reserved || 0) > 0) throw new Error('예약자가 있는 상품은 삭제할 수 없어요. 판매 중단을 이용해 주세요.');
     const product = initialSnapshot.data();
     if (!confirm(`${product.name} 상품을 삭제할까요?`)) return;
     await runTransaction(db, async transaction => {
       const latestSnapshot = await transaction.get(productRef);
-      if (!latestSnapshot.exists() || latestSnapshot.data().ownerId !== activeUser?.uid) throw new Error('내 상품만 삭제할 수 있어요.');
+      if (!latestSnapshot.exists() || (latestSnapshot.data().ownerId !== activeUser?.uid && activeUser?.uid !== ADMIN_UID)) throw new Error('내 상품 또는 관리자만 삭제할 수 있어요.');
       if (Number(latestSnapshot.data().reserved || 0) > 0) throw new Error('방금 예약이 접수되어 삭제할 수 없어요. 판매 중단을 이용해 주세요.');
       transaction.delete(productRef);
     });
@@ -317,6 +317,32 @@ async function deleteProduct(id) {
   } catch (error) {
     console.error(error);
     notice(error.message || '상품 삭제에 실패했어요.');
+  }
+}
+
+async function deleteProductAsAdmin(id) {
+  try {
+    if (activeUser?.uid !== ADMIN_UID) throw new Error('관리자만 상품을 관리할 수 있어요.');
+    const productSnapshot = await getDoc(doc(db, 'products', id));
+    if (!productSnapshot.exists()) throw new Error('상품을 찾을 수 없어요.');
+    const product = productSnapshot.data();
+    const hasReservations = Number(product.reserved || 0) > 0;
+    const message = hasReservations
+      ? '예약이 있는 상품입니다. 구매자 보호를 위해 삭제 대신 판매를 중단할까요?'
+      : `${product.name} 상품을 삭제할까요?`;
+    if (!confirm(message)) return;
+    if (hasReservations) {
+      await updateDoc(doc(db, 'products', id), { saleStopped: true, moderatedAt: Date.now() });
+      notice('예약이 있어 판매 중단으로 처리했어요.');
+    } else {
+      await deleteDoc(doc(db, 'products', id));
+      await deleteDoc(doc(db, 'images', id)).catch(() => {});
+      notice('관리자 권한으로 상품을 삭제했어요.');
+    }
+    await sync();
+  } catch (error) {
+    console.error(error);
+    notice(error.message || '상품 관리에 실패했어요.');
   }
 }
 
@@ -476,6 +502,7 @@ window.badaApi = {
   saveProduct,
   updateProduct,
   deleteProduct,
+  deleteProductAsAdmin,
   reserve,
   cancelBooking,
   toggleFavorite,
