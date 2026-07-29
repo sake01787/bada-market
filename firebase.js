@@ -36,7 +36,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const ADMIN_UID = 'TMJ63XQhMeheRls0vN34HqZMzDq1';
+const ADMIN_UID = 'BIfYwrOXNLR8J8SkzbJyeSByNHN2';
 let activeUser = null;
 let syncing = false;
 

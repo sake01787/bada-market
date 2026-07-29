@@ -11,7 +11,7 @@ let searchText = '';
 let gradeFilter = 'all';
 let authRole = 'citizen';
 let myPageMode = 'citizen';
-const ADMIN_UID = 'TMJ63XQhMeheRls0vN34HqZMzDq1';
+const ADMIN_UID = 'BIfYwrOXNLR8J8SkzbJyeSByNHN2';
 
 const $ = selector => document.querySelector(selector);
 const isAdmin = () => currentUser?.uid === ADMIN_UID;
