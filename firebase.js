@@ -4,7 +4,6 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -184,9 +183,8 @@ async function registerWithEmail(name, email, password, role) {
       email,
       createdAt: Date.now()
     });
-    await sendEmailVerification(activeUser);
     await finishLogin(role);
-    notice(`${name}님, ${email}로 인증 메일을 보냈어요. 메일 인증은 계정 보호를 위해 권장돼요.`);
+    notice(`${name}님, 회원가입이 완료됐어요.`);
   } catch (error) {
     console.error(error);
     notice(authMessage(error));
@@ -198,29 +196,6 @@ async function resetPassword(email) {
     await sendPasswordResetEmail(auth, email);
     notice('비밀번호 재설정 메일을 보냈어요.');
   } catch (error) {
-    console.error(error);
-    notice(authMessage(error));
-  }
-}
-
-async function resendVerification(email, password) {
-  if (!email || !password) {
-    notice('인증 메일을 다시 받으려면 이메일과 비밀번호를 입력해 주세요.');
-    return;
-  }
-  try {
-    sessionStorage.setItem('badaResendingVerification', '1');
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    if (credential.user.emailVerified) {
-      notice('이미 이메일 인증이 완료된 계정이에요. 로그인해 주세요.');
-    } else {
-      await sendEmailVerification(credential.user);
-      notice(`${email}로 인증 메일을 다시 보냈어요. 받은편지함을 확인해 주세요.`);
-    }
-    sessionStorage.removeItem('badaResendingVerification');
-    await signOut(auth);
-  } catch (error) {
-    sessionStorage.removeItem('badaResendingVerification');
     console.error(error);
     notice(authMessage(error));
   }
@@ -440,7 +415,6 @@ window.badaApi = {
   loginWithEmail,
   registerWithEmail,
   resetPassword,
-  resendVerification,
   logout,
   saveProduct,
   updateProduct,

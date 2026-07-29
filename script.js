@@ -478,7 +478,6 @@ window.sendSellerMessage = (event, bookingId) => {
   window.badaApi?.sendMessage(bookingId, input.value.trim());
   input.value = '';
 };
-
 document.querySelectorAll('[data-start]').forEach(button => {
   button.addEventListener('click', () => requireLogin(button.dataset.start));
 });
@@ -497,7 +496,6 @@ $('#mypage-go-market').addEventListener('click', () => currentUser && show(myPag
 $('#change-user').addEventListener('click', () => window.badaApi?.logout());
 $('#clear-bookings')?.remove();
 $('#cancel-edit').addEventListener('click', resetForm);
-
 function selectAuthMode(mode) {
   const signup = mode === 'signup';
   $('#login-tab').classList.toggle('active', !signup);
@@ -537,13 +535,6 @@ $('#reset-password').addEventListener('click', async () => {
   const email = $('#login-email').value.trim();
   if (!email) return toast('비밀번호를 재설정할 이메일을 입력해 주세요.');
   await window.badaApi?.resetPassword(email);
-});
-
-$('#resend-verification').addEventListener('click', async () => {
-  await window.badaApi?.resendVerification(
-    $('#login-email').value.trim(),
-    $('#login-password').value
-  );
 });
 
 $('#product-unit').addEventListener('change', event => {
