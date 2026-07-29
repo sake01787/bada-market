@@ -442,6 +442,28 @@ async function addComment(productId, text) {
   notice('댓글을 등록했어요.');
 }
 
+async function replyToComment(commentId, text) {
+  if (!text || !activeUser) return;
+  try {
+    const commentRef = doc(db, 'comments', commentId);
+    const commentSnapshot = await getDoc(commentRef);
+    if (!commentSnapshot.exists()) throw new Error('질문을 찾을 수 없어요.');
+    const comment = commentSnapshot.data();
+    if (comment.sellerId !== activeUser.uid) throw new Error('이 상품의 판매자만 답장할 수 있어요.');
+    await updateDoc(commentRef, {
+      replyText: text,
+      replyAuthorId: activeUser.uid,
+      replyAuthorName: displayName(activeUser),
+      repliedAt: Date.now()
+    });
+    await sync();
+    notice('구매자에게 답장을 등록했어요.');
+  } catch (error) {
+    console.error(error);
+    notice(error.message || '답장 등록에 실패했어요.');
+  }
+}
+
 async function deleteCommentAsAdmin(commentId) {
   try {
     if (activeUser?.uid !== ADMIN_UID) throw new Error('관리자만 댓글을 삭제할 수 있어요.');
@@ -507,6 +529,7 @@ window.badaApi = {
   cancelBooking,
   toggleFavorite,
   addComment,
+  replyToComment,
   deleteCommentAsAdmin,
   hideProductAsAdmin,
   sendMessage

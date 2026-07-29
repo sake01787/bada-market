@@ -146,6 +146,7 @@ function renderFisherList() {
           <button type="button" class="delete" onclick="deleteProduct('${product.id}')">삭제</button>
           <button type="button" class="stop-btn" onclick="toggleSale('${product.id}')">${product.saleStopped ? '판매 재개' : '판매 중단'}</button>
         </div>
+        ${renderComments(product)}
         ${renderSellerMessages(product)}
       </div>
       <select class="status-select" onchange="changeStatus('${product.id}', this.value)">
@@ -215,20 +216,36 @@ function commentsFor(productId) {
 
 function renderComments(product) {
   const comments = commentsFor(product.id);
+  const isSeller = product.ownerId === currentUser?.uid;
   return `
     <details class="comments">
-      <summary>댓글로 문의하기 ${comments.length ? `(${comments.length})` : ''}</summary>
+      <summary>${isSeller ? '구매자 질문' : '댓글로 문의하기'} ${comments.length ? `(${comments.length})` : ''}</summary>
       <div class="comment-list">
         ${comments.map(comment => `
-          <p><strong>${escapeHtml(comment.authorName)}</strong> ${escapeHtml(comment.text)}
-            ${isAdmin() && comment.firebaseId ? `<button class="admin-delete-comment" type="button" onclick="moderateDeleteComment('${comment.firebaseId}')">관리자 삭제</button>` : ''}
-          </p>
+          <div class="comment-item">
+            <p><strong>${escapeHtml(comment.authorName)}</strong> ${escapeHtml(comment.text)}
+              ${isAdmin() && comment.firebaseId ? `<button class="admin-delete-comment" type="button" onclick="moderateDeleteComment('${comment.firebaseId}')">관리자 삭제</button>` : ''}
+            </p>
+            ${comment.replyText ? `
+              <div class="seller-reply">
+                <span>↳ 어민 답변</span>
+                <p><strong>${escapeHtml(comment.replyAuthorName || '판매자')}</strong> ${escapeHtml(comment.replyText)}</p>
+              </div>
+            ` : ''}
+            ${isSeller && comment.firebaseId ? `
+              <button class="comment-reply-toggle" type="button" onclick="toggleCommentReply('${comment.firebaseId}')">${comment.replyText ? '답장 수정' : '답장하기'}</button>
+              <form id="comment-reply-${comment.firebaseId}" class="comment-reply-form hidden" onsubmit="submitCommentReply(event, '${comment.firebaseId}')">
+                <input name="reply" maxlength="200" required value="${escapeHtml(comment.replyText || '')}" placeholder="구매자에게 답변을 적어 주세요">
+                <button type="submit">답장 등록</button>
+              </form>
+            ` : ''}
+          </div>
         `).join('') || '<p class="comment-empty">아직 댓글이 없어요.</p>'}
       </div>
-      <form class="comment-form" onsubmit="submitComment(event, '${product.id}')">
+      ${isSeller ? '' : `<form class="comment-form" onsubmit="submitComment(event, '${product.id}')">
         <input name="comment" maxlength="200" required placeholder="판매자에게 문의할 내용을 적어 주세요">
         <button type="submit">등록</button>
-      </form>
+      </form>`}
     </details>
   `;
 }
@@ -497,6 +514,17 @@ window.submitComment = (event, productId) => {
   const input = event.currentTarget.elements.comment;
   window.badaApi?.addComment(productId, input.value.trim());
   input.value = '';
+};
+window.toggleCommentReply = commentId => {
+  const form = document.getElementById(`comment-reply-${commentId}`);
+  if (!form) return;
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) form.elements.reply.focus();
+};
+window.submitCommentReply = (event, commentId) => {
+  event.preventDefault();
+  const input = event.currentTarget.elements.reply;
+  window.badaApi?.replyToComment(commentId, input.value.trim());
 };
 window.sendSellerMessage = (event, bookingId) => {
   event.preventDefault();
