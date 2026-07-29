@@ -596,12 +596,7 @@ function installSearch() {
       <input id="product-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="수산물명, 어선명, 픽업 장소 검색">
       <button id="product-search-clear" class="search-clear" type="button">지우기</button>
     </div>
-    <div class="grade-categories" role="group" aria-label="수산물 구분 선택">
-      <button class="grade-category active" type="button" data-grade-filter="all">전체</button>
-      <button class="grade-category" type="button" data-grade-filter="일반">일반 수산물</button>
-      <button class="grade-category ugly" type="button" data-grade-filter="못난이">못난이 수산물</button>
-    </div>
-    <small class="search-help">일반·못난이, 입항 상태, 판매 단위로도 검색할 수 있어요.</small>
+    <small class="search-help">수산물명, 어선명, 픽업 장소로 검색할 수 있어요.</small>
   `;
   heading.before(panel);
   $('#product-search').addEventListener('input', event => {
@@ -615,16 +610,16 @@ function installSearch() {
     renderCitizenList();
     hydratePhotos();
   });
-  document.querySelectorAll('[data-grade-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      gradeFilter = button.dataset.gradeFilter;
-      document.querySelectorAll('[data-grade-filter]').forEach(item => item.classList.toggle('active', item === button));
-      renderCitizenList();
-      hydratePhotos();
-    });
-  });
 }
 
 installSearch();
+document.querySelectorAll('[data-grade-filter]').forEach(button => {
+  button.addEventListener('click', () => {
+    gradeFilter = button.dataset.gradeFilter;
+    document.querySelectorAll('[data-grade-filter]').forEach(item => item.classList.toggle('active', item === button));
+    renderCitizenList();
+    hydratePhotos();
+  });
+});
 resetForm();
 render();
