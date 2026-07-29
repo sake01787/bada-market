@@ -9,6 +9,7 @@ let editingId = null;
 let previewUrl = '';
 let searchText = '';
 let authRole = 'citizen';
+let myPageMode = 'citizen';
 
 const $ = selector => document.querySelector(selector);
 const remaining = product => Math.max(0, Number(product.quantity) - Number(product.reserved || 0));
@@ -71,6 +72,7 @@ function show(role) {
   $('#login-screen').classList.add('hidden');
   $('#fisher-screen').classList.toggle('hidden', role !== 'fisher');
   $('#citizen-screen').classList.toggle('hidden', role !== 'citizen');
+  $('#mypage-screen').classList.toggle('hidden', role !== 'mypage');
   render();
 }
 
@@ -81,6 +83,12 @@ function goHome() {
   currentRole = '';
   document.querySelectorAll('.screen, #login-screen').forEach(element => element.classList.add('hidden'));
   $('#role-screen').classList.remove('hidden');
+}
+
+function openMyPage(mode) {
+  if (!currentUser) return requireLogin(mode);
+  myPageMode = mode;
+  show('mypage');
 }
 
 function requireLogin(role) {
@@ -258,7 +266,8 @@ function canCancel(booking) {
 }
 
 function renderBookings() {
-  $('#booking-list').innerHTML = state.bookings.map(booking => {
+  const activeBookings = state.bookings.filter(booking => booking.bookingStatus !== 'cancelled');
+  $('#booking-list').innerHTML = activeBookings.map(booking => {
     const product = state.products.find(item => item.id === booking.productId);
     const status = product?.status || booking.status || '판매 정보 없음';
     const pickup = product?.pickup || booking.pickup;
@@ -280,24 +289,114 @@ function renderBookings() {
   }).join('') || '<p class="empty">아직 예약한 수산물이 없어요.</p>';
 }
 
-function renderFavorites() {
-  let panel = $('#favorites-panel');
-  if (!panel) {
-    panel = document.createElement('section');
-    panel.id = 'favorites-panel';
-    panel.className = 'panel bookings';
-    $('.citizen-content').append(panel);
-  }
-  const favorites = state.products.filter(product => state.favorites?.includes(product.id));
-  panel.innerHTML = `
-    <div class="section-heading"><div><span class="eyebrow">마이페이지</span><h3>관심 상품</h3></div></div>
-    ${favorites.map(product => `
-      <div class="booking-item">
-        ${productPhoto(product, 'booking-photo')}
-        <div class="item-main"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.boat)} · ${Number(product.price).toLocaleString('ko-KR')}원/${escapeHtml(product.unit)}</small></div>
+function bookingProduct(booking) {
+  return state.products.find(product => product.id === booking.productId);
+}
+
+function bookingIsCompleted(booking) {
+  const product = bookingProduct(booking);
+  return product?.status === '입항 완료' || booking.productStatus === '입항 완료';
+}
+
+function renderMyBooking(booking, type) {
+  const product = bookingProduct(booking);
+  const statusText = type === 'cancelled'
+    ? '예약 취소'
+    : type === 'completed'
+      ? '입항 완료'
+      : '픽업 예정';
+  const dateText = type === 'cancelled' && booking.cancelledAt
+    ? `취소일 ${formatTime(booking.cancelledAt)}`
+    : product?.arrival || booking.arrival
+      ? `입항 ${formatTime(product?.arrival || booking.arrival)}`
+      : '입항 시간 확인 중';
+  return `
+    <article class="mypage-item booking-${type}">
+      ${productPhoto(product || booking, 'booking-photo')}
+      <div class="item-main">
+        <strong>${escapeHtml(booking.name)} <span class="mypage-status ${type}">${statusText}</span></strong>
+        <small>${escapeHtml(booking.boat)} · ${escapeHtml(booking.qty)}${escapeHtml(booking.unit)}</small>
+        <small>${dateText}</small>
+        <small>📍 ${escapeHtml(product?.pickup || booking.pickup || '픽업 장소 확인 중')}</small>
       </div>
-    `).join('') || '<p class="empty">관심 상품이 없습니다.</p>'}
+    </article>
   `;
+}
+
+function renderMyProduct(product, type) {
+  const statusText = type === 'reserved'
+    ? `예약 ${product.reserved || 0}${escapeHtml(product.unit)}`
+    : type === 'completed'
+      ? '입항 완료'
+      : '판매 중';
+  return `
+    <article class="mypage-item product-${type}">
+      ${productPhoto(product, 'booking-photo')}
+      <div class="item-main">
+        <strong>${escapeHtml(product.name)} <span class="mypage-status ${type}">${statusText}</span></strong>
+        <small>${escapeHtml(product.boat)} · ${Number(product.price).toLocaleString('ko-KR')}원/${escapeHtml(product.unit)}</small>
+        <small>${formatTime(product.arrival)} · 남은 수량 ${remaining(product)}${escapeHtml(product.unit)}</small>
+        <small>📍 ${escapeHtml(product.pickup)}</small>
+      </div>
+    </article>
+  `;
+}
+
+function renderMySection(title, eyebrow, items, empty, renderer) {
+  return `
+    <section class="panel mypage-panel">
+      <div class="section-heading"><div><span class="eyebrow">${eyebrow}</span><h3>${title}</h3></div><span class="count-badge">${items.length}</span></div>
+      <div class="item-list">${items.map(renderer).join('') || `<p class="empty">${empty}</p>`}</div>
+    </section>
+  `;
+}
+
+function renderMyPage() {
+  const isFisher = myPageMode === 'fisher';
+  $('#mypage-title').textContent = isFisher ? '어민 MY 페이지' : 'MY 페이지';
+  $('#mypage-role-label').textContent = isFisher ? '어민 판매 관리' : '시민 · 관광객 구매 관리';
+  $('#mypage-user-name').textContent = currentUser?.displayName || '로그인해 주세요';
+  $('#mypage-user-email').textContent = currentUser?.email || '';
+  $('#mypage-go-market').textContent = isFisher ? '판매 관리' : '장터로';
+
+  if (isFisher) {
+    const mine = state.products.filter(product => product.ownerId === currentUser?.uid);
+    const selling = mine.filter(product => product.status !== '입항 완료' && !product.saleStopped);
+    const reserved = mine.filter(product => product.status !== '입항 완료' && Number(product.reserved || 0) > 0);
+    const completed = mine.filter(product => product.status === '입항 완료');
+    $('#mypage-summary').innerHTML = `
+      <div class="mypage-metric"><small>판매 중</small><b>${selling.length}</b></div>
+      <div class="mypage-metric"><small>예약 상품</small><b>${reserved.length}</b></div>
+      <div class="mypage-metric"><small>거래 완료</small><b>${completed.length}</b></div>
+    `;
+    $('#mypage-sections').innerHTML = [
+      renderMySection('판매 중인 상품', '판매 관리', selling, '현재 판매 중인 상품이 없습니다.', product => renderMyProduct(product, 'selling')),
+      renderMySection('예약이 있는 상품', '예약 현황', reserved, '예약이 접수된 상품이 없습니다.', product => renderMyProduct(product, 'reserved')),
+      renderMySection('거래 완료한 상품', '판매 이력', completed, '입항 완료된 상품이 없습니다.', product => renderMyProduct(product, 'completed'))
+    ].join('');
+    return;
+  }
+
+  const bookings = state.bookings.filter(booking => booking.buyerId === currentUser?.uid);
+  const upcoming = bookings.filter(booking => booking.bookingStatus !== 'cancelled' && !bookingIsCompleted(booking));
+  const purchased = bookings.filter(booking => booking.bookingStatus !== 'cancelled' && bookingIsCompleted(booking));
+  const cancelled = bookings.filter(booking => booking.bookingStatus === 'cancelled');
+  const favorites = state.products.filter(product => state.favorites?.includes(product.id));
+  $('#mypage-summary').innerHTML = `
+    <div class="mypage-metric"><small>픽업 예정</small><b>${upcoming.length}</b></div>
+    <div class="mypage-metric"><small>구매 내역</small><b>${purchased.length}</b></div>
+    <div class="mypage-metric"><small>관심 상품</small><b>${favorites.length}</b></div>
+  `;
+  $('#mypage-sections').innerHTML = [
+    renderMySection('예정된 픽업 예약', '내 예약', upcoming, '예정된 픽업 예약이 없습니다.', booking => renderMyBooking(booking, 'upcoming')),
+    renderMySection('구매 내역', '입항 완료', purchased, '입항 완료된 구매 내역이 없습니다.', booking => renderMyBooking(booking, 'completed')),
+    renderMySection('취소한 상품', '예약 취소', cancelled, '취소한 예약이 없습니다.', booking => renderMyBooking(booking, 'cancelled')),
+    renderMySection('찜한 상품', '관심 상품', favorites, '찜한 상품이 없습니다.', product => renderMyProduct(product, 'favorite'))
+  ].join('');
+}
+
+function renderFavorites() {
+  $('#favorites-panel')?.remove();
 }
 
 function render() {
@@ -309,6 +408,7 @@ function render() {
   renderCitizenList();
   renderBookings();
   renderFavorites();
+  renderMyPage();
   hydratePhotos();
 }
 
@@ -385,10 +485,15 @@ document.querySelectorAll('[data-start]').forEach(button => {
 document.querySelectorAll('[data-role]').forEach(button => {
   button.addEventListener('click', () => currentUser ? show(button.dataset.role) : requireLogin(button.dataset.role));
 });
+document.querySelectorAll('[data-mypage]').forEach(button => {
+  button.addEventListener('click', () => openMyPage(button.dataset.mypage));
+});
 document.querySelectorAll('[data-home]').forEach(button => button.addEventListener('click', goHome));
 document.querySelectorAll('[data-logout]').forEach(button => {
   button.addEventListener('click', () => window.badaApi?.logout());
 });
+$('#mypage-back').addEventListener('click', () => currentUser && show(myPageMode));
+$('#mypage-go-market').addEventListener('click', () => currentUser && show(myPageMode));
 $('#change-user').addEventListener('click', () => window.badaApi?.logout());
 $('#clear-bookings')?.remove();
 $('#cancel-edit').addEventListener('click', resetForm);

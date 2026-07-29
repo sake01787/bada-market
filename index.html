@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>바다장터</title>
-<link rel="stylesheet" href="style.css?v=20260728-firebase3">
+<link rel="stylesheet" href="style.css?v=20260729-mypage1">
 </head>
 <body>
 <main class="app-shell">
@@ -69,8 +69,11 @@
 </span>
 <h2>오늘의 조업을 등록하세요</h2>
 </div>
+<div class="topbar-actions">
 <button class="text-btn" data-role="citizen">구매 화면</button>
+<button class="text-btn" data-mypage="fisher">MY</button>
 <button class="text-btn logout" data-logout>로그아웃</button>
+</div>
 </header>
 <div class="fisher-layout">
 <form id="catch-form" class="panel form-panel">
@@ -142,8 +145,11 @@
 </span>
 <h2>오늘 들어오는 바다</h2>
 </div>
+<div class="topbar-actions">
 <button class="text-btn" data-role="fisher">어민 화면</button>
+<button class="text-btn" data-mypage="citizen">MY</button>
 <button class="text-btn logout" data-logout>로그아웃</button>
+</div>
 </header>
 <section class="hero">
 <p>산지 직송 예약</p>
@@ -182,12 +188,37 @@
 </section>
 </section>
 </section>
+<section id="mypage-screen" class="screen hidden">
+<header class="topbar">
+<button class="back" id="mypage-back" type="button">‹</button>
+<div>
+<span class="eyebrow">내 바다장터</span>
+<h2 id="mypage-title">MY 페이지</h2>
+</div>
+<div class="topbar-actions">
+<button class="text-btn" id="mypage-go-market" type="button">장터로</button>
+<button class="text-btn logout" data-logout>로그아웃</button>
+</div>
+</header>
+<section class="mypage-content">
+<section class="panel mypage-profile">
+<div class="mypage-avatar" aria-hidden="true">🐟</div>
+<div>
+<span class="eyebrow" id="mypage-role-label">시민 · 관광객</span>
+<h3 id="mypage-user-name">로그인해 주세요</h3>
+<p id="mypage-user-email"></p>
+</div>
+</section>
+<div id="mypage-summary" class="mypage-summary"></div>
+<div id="mypage-sections" class="mypage-sections"></div>
+</section>
+</section>
 </main>
 <div id="toast" class="toast">
 </div>
-<script src="script.js?v=20260728-messages2">
+<script src="script.js?v=20260729-mypage1">
 </script>
-<script type="module" src="firebase.js?v=20260728-messages1">
+<script type="module" src="firebase.js?v=20260729-mypage1">
 </script>
 </body>
 </html>

@@ -316,6 +316,9 @@ async function reserve(productId, quantity) {
         unit: product.unit,
         pickup: product.pickup,
         status: product.status,
+        productStatus: product.status,
+        arrival: product.arrival,
+        bookingStatus: 'reserved',
         createdAt: Date.now()
       });
     });
@@ -343,7 +346,10 @@ async function cancelBooking(bookingId) {
       transaction.update(productRef, {
         reserved: Math.max(0, Number(product.reserved || 0) - Number(booking.qty || 0))
       });
-      transaction.delete(bookingRef);
+      transaction.update(bookingRef, {
+        bookingStatus: 'cancelled',
+        cancelledAt: Date.now()
+      });
     });
     await sync();
     notice('예약을 취소했어요. 수량이 다시 판매 목록에 반영됐습니다.');
