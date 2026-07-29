@@ -42,22 +42,23 @@
 <button id="signup-tab" type="button">회원가입</button>
 </div>
 <form id="email-login-form" class="auth-form">
-<label>이메일<input id="login-email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
-<label>비밀번호<input id="login-password" type="password" autocomplete="current-password" minlength="6" required placeholder="6자 이상"></label>
-<button class="primary-btn" type="submit">이메일로 로그인</button>
+<label>아이디<input id="login-id" autocomplete="username" required placeholder="아이디를 입력하세요"></label>
+<label>비밀번호<div class="password-field"><input id="login-password" type="password" autocomplete="current-password" minlength="6" required placeholder="6자 이상"><button class="password-toggle" type="button" data-password-toggle="login-password" aria-label="비밀번호 보기">보기</button></div></label>
+<button class="primary-btn" type="submit">아이디로 로그인</button>
 <button id="reset-password" class="text-link compact" type="button">비밀번호를 잊으셨나요?</button>
 </form>
 <form id="email-signup-form" class="auth-form hidden">
 <label>닉네임<input id="signup-name" maxlength="16" required placeholder="예: 바다좋아"></label>
+<label>아이디<input id="signup-id" autocomplete="username" maxlength="16" required placeholder="영문·숫자·_ 3~16자"></label>
 <label>이메일<input id="signup-email" type="email" autocomplete="email" required placeholder="name@example.com"></label>
-<label>비밀번호<input id="signup-password" type="password" autocomplete="new-password" minlength="6" required placeholder="6자 이상"></label>
-<label>비밀번호 확인<input id="signup-password-confirm" type="password" autocomplete="new-password" minlength="6" required placeholder="비밀번호 다시 입력"></label>
+<label>비밀번호<div class="password-field"><input id="signup-password" type="password" autocomplete="new-password" minlength="6" required placeholder="6자 이상"><button class="password-toggle" type="button" data-password-toggle="signup-password" aria-label="비밀번호 보기">보기</button></div></label>
+<label>비밀번호 확인<div class="password-field"><input id="signup-password-confirm" type="password" autocomplete="new-password" minlength="6" required placeholder="비밀번호 다시 입력"><button class="password-toggle" type="button" data-password-toggle="signup-password-confirm" aria-label="비밀번호 보기">보기</button></div></label>
 <button class="primary-btn" type="submit">회원가입하고 시작하기</button>
 </form>
 <div class="auth-divider"><span>또는</span></div>
 <button id="google-login" class="google-btn" type="button">G&nbsp;&nbsp; Google 계정으로 계속하기</button>
 <button id="login-cancel" class="text-link">처음으로 돌아가기</button>
-<small>로그인한 계정의 상품·예약·관심 목록만 표시됩니다.</small>
+<small>아이디로 로그인하면 내 상품·예약·관심 목록만 표시됩니다.</small>
 </div>
 </section>
 <section id="fisher-screen" class="screen hidden">
@@ -216,9 +217,9 @@
 </main>
 <div id="toast" class="toast">
 </div>
-<script src="script.js?v=20260729-loginrestore1">
+<script src="script.js?v=20260729-idlogin1">
 </script>
-<script type="module" src="firebase.js?v=20260729-loginrestore1">
+<script type="module" src="firebase.js?v=20260729-idlogin1">
 </script>
 </body>
 </html>

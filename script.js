@@ -98,7 +98,7 @@ function requireLogin(role) {
   $('#role-screen').classList.add('hidden');
   $('#login-screen').classList.remove('hidden');
   $('#login-title').textContent = role === 'fisher' ? '어민으로 시작하기' : '시민·관광객으로 시작하기';
-  $('#login-email').focus();
+  $('#login-id').focus();
 }
 
 function resetForm() {
@@ -502,7 +502,7 @@ function selectAuthMode(mode) {
   $('#signup-tab').classList.toggle('active', signup);
   $('#email-login-form').classList.toggle('hidden', signup);
   $('#email-signup-form').classList.toggle('hidden', !signup);
-  (signup ? $('#signup-name') : $('#login-email')).focus();
+  (signup ? $('#signup-name') : $('#login-id')).focus();
 }
 
 $('#login-tab').addEventListener('click', () => selectAuthMode('login'));
@@ -513,7 +513,7 @@ $('#google-login').addEventListener('click', () => window.badaApi?.loginWithGoog
 $('#email-login-form').addEventListener('submit', async event => {
   event.preventDefault();
   await window.badaApi?.loginWithEmail(
-    $('#login-email').value.trim(),
+    $('#login-id').value.trim(),
     $('#login-password').value,
     authRole
   );
@@ -525,6 +525,7 @@ $('#email-signup-form').addEventListener('submit', async event => {
   if (password !== $('#signup-password-confirm').value) return toast('비밀번호 확인이 일치하지 않아요.');
   await window.badaApi?.registerWithEmail(
     $('#signup-name').value.trim(),
+    $('#signup-id').value.trim(),
     $('#signup-email').value.trim(),
     password,
     authRole
@@ -532,9 +533,19 @@ $('#email-signup-form').addEventListener('submit', async event => {
 });
 
 $('#reset-password').addEventListener('click', async () => {
-  const email = $('#login-email').value.trim();
-  if (!email) return toast('비밀번호를 재설정할 이메일을 입력해 주세요.');
-  await window.badaApi?.resetPassword(email);
+  const identifier = $('#login-id').value.trim();
+  if (!identifier) return toast('비밀번호를 재설정할 아이디를 입력해 주세요.');
+  await window.badaApi?.resetPassword(identifier);
+});
+
+document.querySelectorAll('[data-password-toggle]').forEach(button => {
+  button.addEventListener('click', () => {
+    const input = $(`#${button.dataset.passwordToggle}`);
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    button.textContent = showing ? '보기' : '숨기기';
+    button.setAttribute('aria-label', showing ? '비밀번호 보기' : '비밀번호 숨기기');
+  });
 });
 
 $('#product-unit').addEventListener('change', event => {

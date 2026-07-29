@@ -14,6 +14,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   getFirestore,
   query,
@@ -161,9 +162,20 @@ async function loginWithGoogle(role) {
   }
 }
 
-async function loginWithEmail(email, password, role) {
+const normalizeLoginId = value => String(value || '').trim().toLowerCase();
+
+async function emailForLogin(identifier) {
+  const value = String(identifier || '').trim();
+  if (value.includes('@')) return value;
+  const snapshot = await getDoc(doc(db, 'loginIds', normalizeLoginId(value)));
+  if (!snapshot.exists()) throw new Error('등록되지 않은 아이디예요.');
+  return snapshot.data().email;
+}
+
+async function loginWithEmail(identifier, password, role) {
   try {
     sessionStorage.setItem('badaPendingRole', role);
+    const email = await emailForLogin(identifier);
     await signInWithEmailAndPassword(auth, email, password);
     await finishLogin(role);
   } catch (error) {
@@ -172,17 +184,23 @@ async function loginWithEmail(email, password, role) {
   }
 }
 
-async function registerWithEmail(name, email, password, role) {
+async function registerWithEmail(name, loginIdInput, email, password, role) {
   try {
+    const loginId = normalizeLoginId(loginIdInput);
+    if (!/^[a-z0-9_]{3,16}$/.test(loginId)) throw new Error('아이디는 영문 소문자·숫자·_로 3~16자 입력해 주세요.');
+    const loginIdRef = doc(db, 'loginIds', loginId);
+    if ((await getDoc(loginIdRef)).exists()) throw new Error('이미 사용 중인 아이디예요.');
     sessionStorage.setItem('badaPendingRole', role);
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(credential.user, { displayName: name });
     activeUser = credential.user;
     await setDoc(doc(db, 'users', activeUser.uid), {
       displayName: name,
+      loginId,
       email,
       createdAt: Date.now()
     });
+    await setDoc(loginIdRef, { uid: activeUser.uid, email, createdAt: Date.now() });
     await finishLogin(role);
     notice(`${name}님, 회원가입이 완료됐어요.`);
   } catch (error) {
@@ -191,8 +209,9 @@ async function registerWithEmail(name, email, password, role) {
   }
 }
 
-async function resetPassword(email) {
+async function resetPassword(identifier) {
   try {
+    const email = await emailForLogin(identifier);
     await sendPasswordResetEmail(auth, email);
     notice('비밀번호 재설정 메일을 보냈어요.');
   } catch (error) {
