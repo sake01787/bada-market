@@ -40,9 +40,6 @@ let activeUser = null;
 let syncing = false;
 
 const displayName = user => user?.displayName || user?.email?.split('@')[0] || '바다장터 사용자';
-const isUnverifiedEmailUser = user => Boolean(
-  user?.providerData.some(provider => provider.providerId === 'password') && !user.emailVerified
-);
 
 function notice(message) {
   if (typeof window.toast === 'function') window.toast(message);
@@ -149,14 +146,6 @@ function authMessage(error) {
 
 async function finishLogin(role) {
   activeUser = auth.currentUser;
-  await activeUser?.reload();
-  activeUser = auth.currentUser;
-  if (!activeUser) return;
-  if (isUnverifiedEmailUser(activeUser)) {
-    await signOut(auth);
-    notice('이메일 인증이 아직 완료되지 않았어요. 받은편지함의 인증 링크를 누른 뒤 로그인해 주세요.');
-    return;
-  }
   await sync();
   sessionStorage.removeItem('badaPendingRole');
   window.show?.(role);
@@ -187,7 +176,6 @@ async function loginWithEmail(email, password, role) {
 async function registerWithEmail(name, email, password, role) {
   try {
     sessionStorage.setItem('badaPendingRole', role);
-    sessionStorage.setItem('badaSigningUp', '1');
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(credential.user, { displayName: name });
     activeUser = credential.user;
@@ -197,12 +185,9 @@ async function registerWithEmail(name, email, password, role) {
       createdAt: Date.now()
     });
     await sendEmailVerification(activeUser);
-    sessionStorage.removeItem('badaSigningUp');
-    await signOut(auth);
-    sessionStorage.removeItem('badaPendingRole');
-    notice(`${name}님, ${email}로 인증 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인해 주세요.`);
+    await finishLogin(role);
+    notice(`${name}님, ${email}로 인증 메일을 보냈어요. 메일 인증은 계정 보호를 위해 권장돼요.`);
   } catch (error) {
-    sessionStorage.removeItem('badaSigningUp');
     console.error(error);
     notice(authMessage(error));
   }
@@ -471,13 +456,6 @@ onAuthStateChanged(auth, async user => {
   activeUser = user;
   if (!user) {
     window.badaSignedOut();
-    return;
-  }
-  if (isUnverifiedEmailUser(user)) {
-    if (sessionStorage.getItem('badaSigningUp') === '1' || sessionStorage.getItem('badaResendingVerification') === '1') return;
-    sessionStorage.removeItem('badaPendingRole');
-    await signOut(auth);
-    notice('이메일 인증이 완료된 계정만 로그인할 수 있어요. 인증 메일을 확인해 주세요.');
     return;
   }
   await sync();
