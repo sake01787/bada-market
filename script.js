@@ -11,8 +11,10 @@ let searchText = '';
 let gradeFilter = 'all';
 let authRole = 'citizen';
 let myPageMode = 'citizen';
+const ADMIN_UID = 'TMJ63XQhMeheRls0vN34HqZMzDq1';
 
 const $ = selector => document.querySelector(selector);
+const isAdmin = () => currentUser?.uid === ADMIN_UID;
 const remaining = product => Math.max(0, Number(product.quantity) - Number(product.reserved || 0));
 const hasArrivalPassed = product => {
   const arrivalTime = new Date(product?.arrival).getTime();
@@ -218,7 +220,9 @@ function renderComments(product) {
       <summary>댓글로 문의하기 ${comments.length ? `(${comments.length})` : ''}</summary>
       <div class="comment-list">
         ${comments.map(comment => `
-          <p><strong>${escapeHtml(comment.authorName)}</strong> ${escapeHtml(comment.text)}</p>
+          <p><strong>${escapeHtml(comment.authorName)}</strong> ${escapeHtml(comment.text)}
+            ${isAdmin() && comment.firebaseId ? `<button class="admin-delete-comment" type="button" onclick="moderateDeleteComment('${comment.firebaseId}')">관리자 삭제</button>` : ''}
+          </p>
         `).join('') || '<p class="comment-empty">아직 댓글이 없어요.</p>'}
       </div>
       <form class="comment-form" onsubmit="submitComment(event, '${product.id}')">
@@ -256,6 +260,7 @@ function renderCitizenList() {
         <h4>${escapeHtml(product.name)}</h4>
         <span class="tag ${product.grade === '못난이' ? 'ugly' : ''}">${escapeHtml(product.grade)} 수산물</span>
         ${isMine ? '<p class="owner-badge">내가 등록한 상품</p>' : ''}
+        ${isAdmin() ? `<button class="admin-hide-product" type="button" onclick="moderateHideProduct('${product.id}')">관리자 · 상품 숨김</button>` : ''}
         <p class="price">${Number(product.price).toLocaleString('ko-KR')}원 <small>/ ${escapeHtml(product.unit)}</small></p>
         <p class="stock">남은 수량 <b>${remaining(product)}${escapeHtml(product.unit)}</b></p>
         <p class="pickup">📍 픽업: ${escapeHtml(product.pickup)}</p>
@@ -465,6 +470,8 @@ window.editProduct = id => {
 };
 
 window.deleteProduct = id => window.badaApi?.deleteProduct(id);
+window.moderateDeleteComment = id => window.badaApi?.deleteCommentAsAdmin(id);
+window.moderateHideProduct = id => window.badaApi?.hideProductAsAdmin(id);
 window.changeStatus = (id, status) => window.badaApi?.updateProduct(id, { status });
 window.toggleSale = id => {
   const product = state.products.find(item => item.id === id);

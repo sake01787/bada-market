@@ -36,6 +36,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const ADMIN_UID = 'TMJ63XQhMeheRls0vN34HqZMzDq1';
 let activeUser = null;
 let syncing = false;
 
@@ -415,6 +416,32 @@ async function addComment(productId, text) {
   notice('댓글을 등록했어요.');
 }
 
+async function deleteCommentAsAdmin(commentId) {
+  try {
+    if (activeUser?.uid !== ADMIN_UID) throw new Error('관리자만 댓글을 삭제할 수 있어요.');
+    if (!confirm('이 댓글을 삭제할까요?')) return;
+    await deleteDoc(doc(db, 'comments', commentId));
+    await sync();
+    notice('댓글을 삭제했어요.');
+  } catch (error) {
+    console.error(error);
+    notice(error.message || '댓글 삭제에 실패했어요.');
+  }
+}
+
+async function hideProductAsAdmin(productId) {
+  try {
+    if (activeUser?.uid !== ADMIN_UID) throw new Error('관리자만 상품을 숨길 수 있어요.');
+    if (!confirm('이 상품을 구매 화면에서 숨길까요? 기존 예약은 보존됩니다.')) return;
+    await updateDoc(doc(db, 'products', productId), { saleStopped: true, moderatedAt: Date.now() });
+    await sync();
+    notice('상품을 숨겼어요. 기존 예약은 유지됩니다.');
+  } catch (error) {
+    console.error(error);
+    notice(error.message || '상품 숨김에 실패했어요.');
+  }
+}
+
 async function sendMessage(bookingId, text) {
   if (!text || !activeUser) return;
   try {
@@ -453,6 +480,8 @@ window.badaApi = {
   cancelBooking,
   toggleFavorite,
   addComment,
+  deleteCommentAsAdmin,
+  hideProductAsAdmin,
   sendMessage
 };
 
