@@ -330,6 +330,7 @@ async function reserve(productId, quantity) {
       const product = snapshot.data();
       if (product.ownerId === activeUser.uid) throw new Error('내가 등록한 상품은 예약할 수 없어요.');
       if (product.saleStopped) throw new Error('판매가 중단된 상품이에요.');
+      if (new Date(product.arrival).getTime() < Date.now()) throw new Error('예상 입항 시간이 지난 상품은 예약할 수 없어요.');
       const available = Number(product.quantity) - Number(product.reserved || 0);
       if (!quantity || quantity < 1 || quantity > available) throw new Error('남은 수량 안에서 선택해 주세요.');
 

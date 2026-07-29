@@ -14,6 +14,10 @@ let myPageMode = 'citizen';
 
 const $ = selector => document.querySelector(selector);
 const remaining = product => Math.max(0, Number(product.quantity) - Number(product.reserved || 0));
+const hasArrivalPassed = product => {
+  const arrivalTime = new Date(product?.arrival).getTime();
+  return Number.isFinite(arrivalTime) && arrivalTime < Date.now();
+};
 const formatTime = value => new Date(value).toLocaleString('ko-KR', {
   month: 'long',
   day: 'numeric',
@@ -228,7 +232,7 @@ function renderComments(product) {
 function renderCitizenList() {
   const normalized = searchText.trim().toLocaleLowerCase('ko-KR');
   const products = state.products.filter(product => {
-    if (remaining(product) <= 0 || product.saleStopped) return false;
+    if (remaining(product) <= 0 || product.saleStopped || hasArrivalPassed(product)) return false;
     const searchable = [product.name, product.boat, product.pickup, product.grade, product.status, product.unit]
       .join(' ')
       .toLocaleLowerCase('ko-KR');
