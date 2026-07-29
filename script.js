@@ -250,7 +250,7 @@ function renderCitizenList() {
       <article class="product-card">
         <button type="button" class="favorite-btn" onclick="toggleFavorite('${product.id}')">${liked ? '♥ 관심 상품' : '♡ 관심 상품'}</button>
         ${productPhoto(product, 'product-photo')}
-        <span class="boat">⚓ ${escapeHtml(product.boat)} · ${formatTime(product.arrival)}</span>
+        <span class="boat">⚓ 어선 ${escapeHtml(product.boat)}</span>
         <span class="arrival-status ${statusClass}"><i></i>${escapeHtml(product.status || '입항 상태 확인 중')}</span>
         <p class="arrival-time">⏱ 예상 입항: <b>${formatTime(product.arrival)}</b></p>
         <h4>${escapeHtml(product.name)}</h4>
