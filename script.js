@@ -539,6 +539,13 @@ $('#reset-password').addEventListener('click', async () => {
   await window.badaApi?.resetPassword(email);
 });
 
+$('#resend-verification').addEventListener('click', async () => {
+  await window.badaApi?.resendVerification(
+    $('#login-email').value.trim(),
+    $('#login-password').value
+  );
+});
+
 $('#product-unit').addEventListener('change', event => {
   $('#price-unit').textContent = event.target.value;
   $('#quantity-unit').textContent = event.target.value;

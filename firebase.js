@@ -218,6 +218,29 @@ async function resetPassword(email) {
   }
 }
 
+async function resendVerification(email, password) {
+  if (!email || !password) {
+    notice('인증 메일을 다시 받으려면 이메일과 비밀번호를 입력해 주세요.');
+    return;
+  }
+  try {
+    sessionStorage.setItem('badaResendingVerification', '1');
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    if (credential.user.emailVerified) {
+      notice('이미 이메일 인증이 완료된 계정이에요. 로그인해 주세요.');
+    } else {
+      await sendEmailVerification(credential.user);
+      notice(`${email}로 인증 메일을 다시 보냈어요. 받은편지함을 확인해 주세요.`);
+    }
+    sessionStorage.removeItem('badaResendingVerification');
+    await signOut(auth);
+  } catch (error) {
+    sessionStorage.removeItem('badaResendingVerification');
+    console.error(error);
+    notice(authMessage(error));
+  }
+}
+
 async function logout() {
   await signOut(auth);
   sessionStorage.removeItem('badaPendingRole');
@@ -432,6 +455,7 @@ window.badaApi = {
   loginWithEmail,
   registerWithEmail,
   resetPassword,
+  resendVerification,
   logout,
   saveProduct,
   updateProduct,
@@ -450,7 +474,7 @@ onAuthStateChanged(auth, async user => {
     return;
   }
   if (isUnverifiedEmailUser(user)) {
-    if (sessionStorage.getItem('badaSigningUp') === '1') return;
+    if (sessionStorage.getItem('badaSigningUp') === '1' || sessionStorage.getItem('badaResendingVerification') === '1') return;
     sessionStorage.removeItem('badaPendingRole');
     await signOut(auth);
     notice('이메일 인증이 완료된 계정만 로그인할 수 있어요. 인증 메일을 확인해 주세요.');
