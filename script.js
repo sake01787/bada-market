@@ -8,6 +8,7 @@ let currentRole = '';
 let editingId = null;
 let previewUrl = '';
 let searchText = '';
+let gradeFilter = 'all';
 let authRole = 'citizen';
 let myPageMode = 'citizen';
 
@@ -231,23 +232,27 @@ function renderCitizenList() {
     const searchable = [product.name, product.boat, product.pickup, product.grade, product.status, product.unit]
       .join(' ')
       .toLocaleLowerCase('ko-KR');
-    return !normalized || searchable.includes(normalized);
+    const matchesSearch = !normalized || searchable.includes(normalized);
+    const matchesGrade = gradeFilter === 'all' || product.grade === gradeFilter;
+    return matchesSearch && matchesGrade;
   });
 
   $('#product-count').textContent = `${products.length}개 품목`;
   $('#citizen-list').innerHTML = products.map(product => {
     const isMine = product.ownerId === currentUser?.uid;
     const liked = state.favorites?.includes(product.id);
+    const statusClass = ({ '출항 준비': 'ready', '조업 중': 'fishing', '입항 예정': 'expected', '입항 완료': 'completed' })[product.status] || 'ready';
     return `
       <article class="product-card">
         <button type="button" class="favorite-btn" onclick="toggleFavorite('${product.id}')">${liked ? '♥ 관심 상품' : '♡ 관심 상품'}</button>
         ${productPhoto(product, 'product-photo')}
         <span class="boat">⚓ ${escapeHtml(product.boat)} · ${formatTime(product.arrival)}</span>
+        <span class="arrival-status ${statusClass}"><i></i>${escapeHtml(product.status || '입항 상태 확인 중')}</span>
         <h4>${escapeHtml(product.name)}</h4>
         <span class="tag ${product.grade === '못난이' ? 'ugly' : ''}">${escapeHtml(product.grade)} 수산물</span>
         ${isMine ? '<p class="owner-badge">내가 등록한 상품</p>' : ''}
         <p class="price">${Number(product.price).toLocaleString('ko-KR')}원 <small>/ ${escapeHtml(product.unit)}</small></p>
-        <p class="stock">${escapeHtml(product.status)} · 남은 수량 <b>${remaining(product)}${escapeHtml(product.unit)}</b></p>
+        <p class="stock">남은 수량 <b>${remaining(product)}${escapeHtml(product.unit)}</b></p>
         <p class="pickup">📍 픽업: ${escapeHtml(product.pickup)}</p>
         <div class="reserve-row">
           <input id="qty-${product.id}" type="number" min="1" max="${remaining(product)}" value="1" ${isMine ? 'disabled' : ''}>
@@ -502,7 +507,7 @@ function selectAuthMode(mode) {
   $('#signup-tab').classList.toggle('active', signup);
   $('#email-login-form').classList.toggle('hidden', signup);
   $('#email-signup-form').classList.toggle('hidden', !signup);
-  (signup ? $('#signup-name') : $('#login-id')).focus();
+  (signup ? $('#signup-id') : $('#login-id')).focus();
 }
 
 $('#login-tab').addEventListener('click', () => selectAuthMode('login'));
@@ -524,15 +529,13 @@ $('#email-signup-form').addEventListener('submit', async event => {
   const password = $('#signup-password').value;
   if (password !== $('#signup-password-confirm').value) return toast('비밀번호 확인이 일치하지 않아요.');
   await window.badaApi?.registerWithEmail(
-    $('#signup-name').value.trim(),
     $('#signup-id').value.trim(),
-    $('#signup-email').value.trim(),
     password,
     authRole
   );
 });
 
-$('#reset-password').addEventListener('click', async () => {
+$('#reset-password')?.addEventListener('click', async () => {
   const identifier = $('#login-id').value.trim();
   if (!identifier) return toast('비밀번호를 재설정할 아이디를 입력해 주세요.');
   await window.badaApi?.resetPassword(identifier);
@@ -593,6 +596,11 @@ function installSearch() {
       <input id="product-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="수산물명, 어선명, 픽업 장소 검색">
       <button id="product-search-clear" class="search-clear" type="button">지우기</button>
     </div>
+    <div class="grade-categories" role="group" aria-label="수산물 구분 선택">
+      <button class="grade-category active" type="button" data-grade-filter="all">전체</button>
+      <button class="grade-category" type="button" data-grade-filter="일반">일반 수산물</button>
+      <button class="grade-category ugly" type="button" data-grade-filter="못난이">못난이 수산물</button>
+    </div>
     <small class="search-help">일반·못난이, 입항 상태, 판매 단위로도 검색할 수 있어요.</small>
   `;
   heading.before(panel);
@@ -606,6 +614,14 @@ function installSearch() {
     searchText = '';
     renderCitizenList();
     hydratePhotos();
+  });
+  document.querySelectorAll('[data-grade-filter]').forEach(button => {
+    button.addEventListener('click', () => {
+      gradeFilter = button.dataset.gradeFilter;
+      document.querySelectorAll('[data-grade-filter]').forEach(item => item.classList.toggle('active', item === button));
+      renderCitizenList();
+      hydratePhotos();
+    });
   });
 }
 

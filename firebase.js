@@ -141,12 +141,16 @@ function authMessage(error) {
     'auth/network-request-failed': '인터넷 연결을 확인해 주세요.',
     'auth/popup-closed-by-user': 'Google 로그인 창이 닫혔어요.'
   };
-  return messages[error.code] || '로그인 처리 중 문제가 생겼어요. 다시 시도해 주세요.';
+  return messages[error.code] || error.message || '로그인 처리 중 문제가 생겼어요. 다시 시도해 주세요.';
 }
 
 async function finishLogin(role) {
   activeUser = auth.currentUser;
-  await sync();
+  try {
+    await sync();
+  } catch (error) {
+    console.warn('Initial data sync failed:', error);
+  }
   sessionStorage.removeItem('badaPendingRole');
   window.show?.(role);
 }
@@ -164,12 +168,20 @@ async function loginWithGoogle(role) {
 
 const normalizeLoginId = value => String(value || '').trim().toLowerCase();
 
-async function emailForLogin(identifier) {
+// Firebase 이메일/비밀번호 인증을 사용하되, 이용자에게는 아이디만 받는다.
+// 실제 메일 주소를 요구하거나 별도의 Firestore 아이디 매핑을 만들지 않는다.
+const emailForId = identifier => {
   const value = String(identifier || '').trim();
-  if (value.includes('@')) return value;
-  const snapshot = await getDoc(doc(db, 'loginIds', normalizeLoginId(value)));
-  if (!snapshot.exists()) throw new Error('등록되지 않은 아이디예요.');
-  return snapshot.data().email;
+  if (value.includes('@')) return value; // 기존 이메일 계정도 계속 로그인 가능
+  const loginId = normalizeLoginId(value);
+  if (!/^[a-z0-9_]{3,16}$/.test(loginId)) {
+    throw new Error('아이디는 영문 소문자, 숫자, _로 3~16자 입력해 주세요.');
+  }
+  return `${loginId}@bada-market.app`;
+};
+
+async function emailForLogin(identifier) {
+  return emailForId(identifier);
 }
 
 async function loginWithEmail(identifier, password, role) {
@@ -184,25 +196,23 @@ async function loginWithEmail(identifier, password, role) {
   }
 }
 
-async function registerWithEmail(name, loginIdInput, email, password, role) {
+async function registerWithEmail(loginIdInput, password, role) {
   try {
     const loginId = normalizeLoginId(loginIdInput);
     if (!/^[a-z0-9_]{3,16}$/.test(loginId)) throw new Error('아이디는 영문 소문자·숫자·_로 3~16자 입력해 주세요.');
-    const loginIdRef = doc(db, 'loginIds', loginId);
-    if ((await getDoc(loginIdRef)).exists()) throw new Error('이미 사용 중인 아이디예요.');
+    const email = emailForId(loginId);
     sessionStorage.setItem('badaPendingRole', role);
     const credential = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(credential.user, { displayName: name });
+    await updateProfile(credential.user, { displayName: loginId });
     activeUser = credential.user;
     await setDoc(doc(db, 'users', activeUser.uid), {
-      displayName: name,
+      displayName: loginId,
       loginId,
       email,
       createdAt: Date.now()
-    });
-    await setDoc(loginIdRef, { uid: activeUser.uid, email, createdAt: Date.now() });
+    }).catch(error => console.warn('Profile document could not be saved:', error));
     await finishLogin(role);
-    notice(`${name}님, 회원가입이 완료됐어요.`);
+    notice(`${loginId}님, 회원가입이 완료됐어요.`);
   } catch (error) {
     console.error(error);
     notice(authMessage(error));
@@ -451,7 +461,11 @@ onAuthStateChanged(auth, async user => {
     window.badaSignedOut();
     return;
   }
-  await sync();
+  try {
+    await sync();
+  } catch (error) {
+    console.warn('Auth state data sync failed:', error);
+  }
   const role = sessionStorage.getItem('badaPendingRole');
   if (role) {
     sessionStorage.removeItem('badaPendingRole');
